@@ -1,0 +1,428 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Whoop Sketch Dashboard</title>
+  <script src="https://d3js.org/d3.v7.min.js"></script>
+  <style>
+    :root {
+      --bg: #f5f1e8;
+      --paper: #fffdf8;
+      --ink: #1d1d1d;
+      --muted: #6f6f6f;
+      --blue: #4d78c9;
+      --red: #d05a58;
+      --green: #6d9f49;
+      --yellow: #d8b24c;
+      --gray: #b9b4ac;
+      --line: #2c2c2c;
+    }
+
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: "Trebuchet MS", "Segoe UI", Arial, sans-serif;
+      background: linear-gradient(180deg, #efe8d8 0%, #f7f2e8 100%);
+      color: var(--ink);
+    }
+
+    .wrap {
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 24px;
+    }
+
+    .board {
+      width: 390px;
+      background: var(--paper);
+      border: 2.5px solid var(--line);
+      border-radius: 6px;
+      box-shadow: 0 10px 24px rgba(0,0,0,0.12);
+      overflow: hidden;
+      position: relative;
+    }
+
+    .board::before {
+      content: "";
+      position: absolute;
+      inset: 0;
+      pointer-events: none;
+      background:
+        radial-gradient(circle at 20% 10%, rgba(0,0,0,0.03), transparent 25%),
+        radial-gradient(circle at 70% 50%, rgba(0,0,0,0.025), transparent 18%),
+        radial-gradient(circle at 60% 80%, rgba(0,0,0,0.02), transparent 16%);
+      mix-blend-mode: multiply;
+    }
+
+    .header {
+      border-bottom: 2px solid var(--line);
+      text-align: center;
+      padding: 12px 16px 10px;
+      letter-spacing: 0.5px;
+      font-size: 18px;
+      font-weight: 700;
+    }
+
+    .content {
+      padding: 14px;
+      display: grid;
+      gap: 12px;
+      position: relative;
+      z-index: 1;
+    }
+
+    .top-cards {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 10px;
+    }
+
+    .metric-card {
+      border: 2px solid var(--line);
+      border-radius: 4px;
+      background: rgba(255,255,255,0.85);
+      padding: 10px 10px 8px;
+    }
+
+    .metric-card.blue { box-shadow: inset 0 0 0 2px rgba(77,120,201,0.6); }
+    .metric-card.red { box-shadow: inset 0 0 0 2px rgba(208,90,88,0.6); }
+
+    .metric-title {
+      font-size: 12px;
+      color: var(--muted);
+      margin-bottom: 2px;
+    }
+
+    .metric-value {
+      font-size: 28px;
+      line-height: 1;
+      font-weight: 800;
+      margin-bottom: 4px;
+    }
+
+    .metric-sub {
+      font-size: 12px;
+      font-weight: 600;
+    }
+
+    .section {
+      border-top: 2px solid var(--line);
+      padding-top: 8px;
+    }
+
+    .section-title {
+      font-size: 17px;
+      font-weight: 700;
+      margin-bottom: 8px;
+    }
+
+    .sleep-meta, .workout-meta {
+      display: flex;
+      align-items: baseline;
+      gap: 10px;
+      flex-wrap: wrap;
+      margin-bottom: 8px;
+    }
+
+    .big-number {
+      font-size: 22px;
+      font-weight: 800;
+    }
+
+    .sub-number {
+      font-size: 14px;
+      color: var(--muted);
+      font-weight: 600;
+    }
+
+    .legend-row {
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+      margin-top: 6px;
+      font-size: 12px;
+    }
+
+    .legend-item {
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+    }
+
+    .swatch {
+      width: 11px;
+      height: 11px;
+      border: 1.5px solid var(--line);
+      display: inline-block;
+    }
+
+    .trend-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 10px;
+    }
+
+    .mini-chart {
+      border: 1.5px solid rgba(0,0,0,0.25);
+      border-radius: 4px;
+      padding: 4px;
+      background: rgba(255,255,255,0.75);
+    }
+
+    .mini-label {
+      font-size: 11px;
+      color: var(--muted);
+      margin-top: 2px;
+      text-align: center;
+      font-weight: 600;
+    }
+
+    .footer-note {
+      font-size: 11px;
+      color: var(--muted);
+      text-align: center;
+      padding-top: 2px;
+    }
+
+    svg text {
+      font-family: inherit;
+      fill: var(--ink);
+    }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <div class="board">
+      <div class="header">MY STATS</div>
+      <div class="content">
+        <div class="top-cards">
+          <div class="metric-card blue">
+            <div class="metric-title">Recovery</div>
+            <div class="metric-value" style="color: var(--blue)">78.4%</div>
+            <div class="metric-sub">HRV 48 ms <span style="color: var(--muted)">(4d avg)</span></div>
+          </div>
+          <div class="metric-card red">
+            <div class="metric-title">Day Strain</div>
+            <div class="metric-value" style="color: var(--red)">12.8</div>
+            <div class="metric-sub">RHR 50 bpm <span style="color: var(--muted)">(4d avg)</span></div>
+          </div>
+        </div>
+
+        <div class="section">
+          <div class="section-title">Sleep</div>
+          <div class="sleep-meta">
+            <div class="big-number">7h 30m</div>
+            <div class="sub-number">85.2% efficiency</div>
+          </div>
+          <svg id="sleepBar" width="100%" height="62" viewBox="0 0 340 62" preserveAspectRatio="xMidYMid meet"></svg>
+          <div class="legend-row">
+            <span class="legend-item"><span class="swatch" style="background: var(--gray)"></span>Awake</span>
+            <span class="legend-item"><span class="swatch" style="background: var(--blue)"></span>REM</span>
+            <span class="legend-item"><span class="swatch" style="background: var(--red)"></span>Deep</span>
+            <span class="legend-item"><span class="swatch" style="background: #93a67b"></span>Light</span>
+          </div>
+        </div>
+
+        <div class="section">
+          <div class="section-title">Today's Workout</div>
+          <div class="workout-meta">
+            <div class="big-number">HIIT</div>
+            <div class="sub-number">30 min</div>
+            <div class="sub-number">132 Avg HR</div>
+          </div>
+          <svg id="strainBar" width="100%" height="42" viewBox="0 0 340 42" preserveAspectRatio="xMidYMid meet"></svg>
+          <div class="footer-note">9.5 activity strain • peak HR 165</div>
+        </div>
+
+        <div class="section">
+          <div class="section-title">7 Day Trends</div>
+          <div class="trend-grid">
+            <div class="mini-chart">
+              <svg id="trendRecovery" width="100%" height="110" viewBox="0 0 155 110"></svg>
+              <div class="mini-label">Recovery vs strain</div>
+            </div>
+            <div class="mini-chart">
+              <svg id="trendSleep" width="100%" height="110" viewBox="0 0 155 110"></svg>
+              <div class="mini-label">Sleep vs HRV</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const colors = {
+      blue: getComputedStyle(document.documentElement).getPropertyValue('--blue').trim(),
+      red: getComputedStyle(document.documentElement).getPropertyValue('--red').trim(),
+      green: getComputedStyle(document.documentElement).getPropertyValue('--green').trim(),
+      yellow: getComputedStyle(document.documentElement).getPropertyValue('--yellow').trim(),
+      gray: getComputedStyle(document.documentElement).getPropertyValue('--gray').trim(),
+      line: getComputedStyle(document.documentElement).getPropertyValue('--line').trim(),
+      muted: getComputedStyle(document.documentElement).getPropertyValue('--muted').trim()
+    };
+
+    function drawSleepBar() {
+      const data = [
+        { label: 'Awake', value: 15, color: colors.gray },
+        { label: 'Light', value: 190, color: '#93a67b' },
+        { label: 'REM', value: 105, color: colors.blue },
+        { label: 'Deep', value: 120, color: colors.red }
+      ];
+
+      const svg = d3.select('#sleepBar');
+      const W = 340, H = 62, x0 = 8, y = 18, h = 20, full = 324;
+      const total = d3.sum(data, d => d.value);
+      let cursor = x0;
+
+      svg.append('rect')
+        .attr('x', x0).attr('y', y)
+        .attr('width', full).attr('height', h)
+        .attr('fill', 'none').attr('stroke', colors.line).attr('stroke-width', 2);
+
+      data.forEach((d, i) => {
+        const w = (d.value / total) * full;
+        svg.append('rect')
+          .attr('x', cursor)
+          .attr('y', y)
+          .attr('width', Math.max(2, w - (i < data.length - 1 ? 2 : 0)))
+          .attr('height', h)
+          .attr('fill', d.color)
+          .attr('stroke', colors.line)
+          .attr('stroke-width', 1.2);
+        cursor += w;
+      });
+
+      const labels = ['Awake (15m)', 'REM (1h 45m)', 'Deep (2h)'];
+      svg.selectAll('.sleep-note')
+        .data(labels)
+        .enter()
+        .append('text')
+        .attr('x', (_, i) => [12, 132, 238][i])
+        .attr('y', 56)
+        .attr('font-size', 10.5)
+        .attr('font-weight', 600)
+        .text(d => d);
+    }
+
+    function drawStrainBar() {
+      const svg = d3.select('#strainBar');
+      const W = 340, H = 42;
+      const value = 9.5;
+      const max = 21;
+      const x = d3.scaleLinear().domain([0, max]).range([8, 332]);
+
+      svg.append('rect')
+        .attr('x', 8).attr('y', 10).attr('width', 324).attr('height', 18)
+        .attr('fill', '#f4ece6').attr('stroke', colors.line).attr('stroke-width', 2);
+
+      svg.append('rect')
+        .attr('x', 8).attr('y', 10).attr('width', x(value) - 8).attr('height', 18)
+        .attr('fill', colors.red).attr('stroke', colors.line).attr('stroke-width', 1.2);
+
+      [5, 10, 15, 20].forEach(t => {
+        svg.append('line')
+          .attr('x1', x(t)).attr('x2', x(t)).attr('y1', 10).attr('y2', 28)
+          .attr('stroke', 'rgba(0,0,0,0.28)').attr('stroke-width', 1);
+      });
+
+      svg.append('text')
+        .attr('x', 14).attr('y', 23)
+        .attr('dominant-baseline', 'middle')
+        .attr('font-size', 12)
+        .attr('font-weight', 800)
+        .attr('fill', '#fff')
+        .text('9.5 strain');
+    }
+
+    function drawMiniLineChart(id, series, opts) {
+      const svg = d3.select(id);
+      const W = 155, H = 110;
+      const margin = { top: 10, right: 8, bottom: 18, left: 24 };
+      const innerW = W - margin.left - margin.right;
+      const innerH = H - margin.top - margin.bottom;
+      const g = svg.append('g').attr('transform', `translate(${margin.left},${margin.top})`);
+
+      const allValues = series.flatMap(s => s.values);
+      const y = d3.scaleLinear().domain([d3.min(allValues) * 0.95, d3.max(allValues) * 1.05]).range([innerH, 0]);
+      const x = d3.scalePoint().domain(d3.range(series[0].values.length)).range([0, innerW]);
+
+      g.append('g')
+        .call(d3.axisLeft(y).ticks(4).tickSize(-innerW))
+        .call(g => g.select('.domain').remove())
+        .call(g => g.selectAll('text').attr('font-size', 9))
+        .call(g => g.selectAll('line').attr('stroke', 'rgba(0,0,0,0.18)'));
+
+      g.append('g')
+        .attr('transform', `translate(0,${innerH})`)
+        .call(d3.axisBottom(x).tickValues(d3.range(7)).tickFormat(d => ['M','T','W','T','F','S','S'][d]))
+        .call(g => g.select('.domain').attr('stroke', colors.line))
+        .call(g => g.selectAll('text').attr('font-size', 9));
+
+      const line = d3.line()
+        .x((d, i) => x(i))
+        .y(d => y(d))
+        .curve(d3.curveMonotoneX);
+
+      series.forEach(s => {
+        g.append('path')
+          .datum(s.values)
+          .attr('fill', 'none')
+          .attr('stroke', s.color)
+          .attr('stroke-width', 2.5)
+          .attr('d', line);
+
+        g.selectAll(`.pt-${s.name}`)
+          .data(s.values)
+          .enter()
+          .append('circle')
+          .attr('cx', (d, i) => x(i))
+          .attr('cy', d => y(d))
+          .attr('r', 2.7)
+          .attr('fill', s.color)
+          .attr('stroke', colors.line)
+          .attr('stroke-width', 0.8);
+      });
+
+      svg.append('text')
+        .attr('x', 10)
+        .attr('y', 11)
+        .attr('font-size', 10)
+        .attr('font-weight', 700)
+        .text(opts.leftLabel);
+
+      svg.append('text')
+        .attr('x', 70)
+        .attr('y', 11)
+        .attr('font-size', 10)
+        .attr('font-weight', 700)
+        .attr('fill', opts.rightColor)
+        .text('• ' + opts.rightLabel);
+    }
+
+    drawSleepBar();
+    drawStrainBar();
+
+    drawMiniLineChart('#trendRecovery', [
+      { name: 'recovery', values: [72, 78, 81, 76, 74, 77, 78], color: colors.blue },
+      { name: 'strain', values: [11.4, 12.3, 13.1, 12.4, 11.9, 12.6, 12.8], color: colors.red }
+    ], {
+      leftLabel: 'Recovery',
+      rightLabel: 'Strain',
+      rightColor: colors.red
+    });
+
+    drawMiniLineChart('#trendSleep', [
+      { name: 'sleep', values: [7.1, 7.4, 7.8, 7.5, 7.2, 7.4, 7.5], color: colors.green },
+      { name: 'hrv', values: [44, 45, 47, 46, 45, 47, 48], color: colors.blue }
+    ], {
+      leftLabel: 'Sleep',
+      rightLabel: 'HRV',
+      rightColor: colors.blue
+    });
+  </script>
+</body>
+</html>
